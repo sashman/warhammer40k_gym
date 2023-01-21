@@ -13,6 +13,7 @@ class Warhammer40kEnv(gym.Env):
         self.window_size = 1024  # The size of the PyGame window
         
         self.agent_max_movement = 6
+        self.opponent_max_movement = 6
 
         self.target_radius = 3
 
@@ -23,7 +24,17 @@ class Warhammer40kEnv(gym.Env):
         self.observation_space = spaces.Dict(
             {
                 "agent": spaces.Box(0, size - 1, shape=(2,), dtype=int),
-                "target": objective
+                "opponent": spaces.Box(0, size - 1, shape=(2,), dtype=int),
+                "target": objective,
+                # Phases
+                # 1 Movement
+                # 2 Shooting
+                # 3 Charging
+                # 4 Fighting
+                # "phase": spaces.Discrete(1),
+                # Turn number, which player to act
+                # "turn": spaces.Discrete(2) 
+
             }
         )
 
@@ -47,7 +58,11 @@ class Warhammer40kEnv(gym.Env):
         self.clock = None
 
     def _get_obs(self):
-        return {"agent": self._agent_location, "target": self._target_location}
+        return {
+            "agent": self._agent_location, 
+            "target": self._target_location, 
+            "opponent": self._opponent_location
+        }
 
     def _get_info(self):
         return {
@@ -55,6 +70,13 @@ class Warhammer40kEnv(gym.Env):
                 self._agent_location - self._target_location, ord=1
             )
         }
+
+    def _get_direction_from_polar(self, angle_radians, magnitude):
+        x = magnitude * np.cos(angle_radians)
+        y = magnitude * np.sin(angle_radians)
+        direction = np.floor(np.array([x,y])).astype(int)
+
+        return direction
 
     def reset(self, seed=None, options=None):
         # We need the following line to seed self.np_random
@@ -70,6 +92,12 @@ class Warhammer40kEnv(gym.Env):
                 0, self.size, size=2, dtype=int
             )
 
+        self._opponent_location = self._agent_location
+        while np.array_equal(self._opponent_location, self._target_location):
+            self._opponent_location = self.np_random.integers(
+                0, self.size, size=2, dtype=int
+            )
+
         observation = self._get_obs()
         info = self._get_info()
 
@@ -78,17 +106,27 @@ class Warhammer40kEnv(gym.Env):
 
         return observation, info
 
+    def _opponent_actions(self):
+
+        # Move directly towards target at max speed
+        diff = self._target_location - self._opponent_location
+        distance = np.sqrt(diff[0]**2 + diff[1]**2)
+        angle = np.arctan2(diff[1], diff[0])
+
+        possible_distance = np.clip(distance, 0, self.opponent_max_movement)
+        direction = self._get_direction_from_polar(angle, possible_distance)
+        
+        # We use `np.clip` to make sure we don't leave the grid
+        self._opponent_location = np.clip(
+            self._opponent_location + direction, 0, self.size - 1
+        )
+
+
     def step(self, action):
         
-        # Map the action (element of {0,1,2,3}) to the direction we walk in
-        # direction = self._action_to_direction[action]
-
         angle = math.radians(action[0])
         magnitude = action[1] * self.agent_max_movement
-
-        x = magnitude * np.cos(angle)
-        y = magnitude * np.sin(angle)
-        direction = np.floor(np.array([x,y])).astype(int)
+        direction = self._get_direction_from_polar(angle, magnitude)
         
         # We use `np.clip` to make sure we don't leave the grid
         self._agent_location = np.clip(
@@ -106,6 +144,8 @@ class Warhammer40kEnv(gym.Env):
             reward = 1
         else:
             reward = 1 / distance
+
+        self._opponent_actions()
 
         observation = self._get_obs()
         info = self._get_info()
@@ -145,6 +185,14 @@ class Warhammer40kEnv(gym.Env):
             canvas,
             (0, 0, 255),
             (self._agent_location + 0.5) * pix_square_size,
+            pix_square_size / 3,
+        )
+
+        # Now we draw the opponent
+        pygame.draw.circle(
+            canvas,
+            (127, 0, 127),
+            (self._opponent_location + 0.5) * pix_square_size,
             pix_square_size / 3,
         )
 
