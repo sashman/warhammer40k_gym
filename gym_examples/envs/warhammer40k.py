@@ -6,11 +6,21 @@ import numpy as np
 
 
 class Warhammer40kEnv(gym.Env):
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 2}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 1}
+
+    phase_mapping = {
+        0: "Movement",
+        1: "Shooting",
+        2: "Charging",
+        3: "Fighting",
+    }
 
     def __init__(self, render_mode=None, size=50):
         self.size = size  # The size of the square grid
         self.window_size = 1024  # The size of the PyGame window
+
+        pygame.font.init()
+        self.font = pygame.font.SysFont(None, 48)
         
         self.agent_max_movement = 6
         self.opponent_max_movement = 6
@@ -27,11 +37,11 @@ class Warhammer40kEnv(gym.Env):
                 "opponent": spaces.Box(0, size - 1, shape=(2,), dtype=int),
                 "target": objective,
                 # Phases
-                # 1 Movement
-                # 2 Shooting
-                # 3 Charging
-                # 4 Fighting
-                # "phase": spaces.Discrete(1),
+                # 0 Movement
+                # 1 Shooting
+                # 2 Charging
+                # 3 Fighting
+                "phase": spaces.Discrete(1),
                 # Turn number, which player to act
                 # "turn": spaces.Discrete(2) 
 
@@ -61,7 +71,8 @@ class Warhammer40kEnv(gym.Env):
         return {
             "agent": self._agent_location, 
             "target": self._target_location, 
-            "opponent": self._opponent_location
+            "opponent": self._opponent_location,
+            "phase": self._current_phase
         }
 
     def _get_info(self):
@@ -98,6 +109,8 @@ class Warhammer40kEnv(gym.Env):
                 0, self.size, size=2, dtype=int
             )
 
+        self._current_phase = 0
+
         observation = self._get_obs()
         info = self._get_info()
 
@@ -108,30 +121,37 @@ class Warhammer40kEnv(gym.Env):
 
     def _opponent_actions(self):
 
-        # Move directly towards target at max speed
-        diff = self._target_location - self._opponent_location
-        distance = np.sqrt(diff[0]**2 + diff[1]**2)
-        angle = np.arctan2(diff[1], diff[0])
+        if(self._current_phase == 0):
+            # Move directly towards target at max speed
+            diff = self._target_location - self._opponent_location
+            distance = np.sqrt(diff[0]**2 + diff[1]**2)
+            angle = np.arctan2(diff[1], diff[0])
 
-        possible_distance = np.clip(distance, 0, self.opponent_max_movement)
-        direction = self._get_direction_from_polar(angle, possible_distance)
-        
-        # We use `np.clip` to make sure we don't leave the grid
-        self._opponent_location = np.clip(
-            self._opponent_location + direction, 0, self.size - 1
-        )
+            possible_distance = np.clip(distance, 0, self.opponent_max_movement)
+            direction = self._get_direction_from_polar(angle, possible_distance)
+            
+            # We use `np.clip` to make sure we don't leave the grid
+            self._opponent_location = np.clip(
+                self._opponent_location + direction, 0, self.size - 1
+            )
 
+    def _proceed_to_next_phase(self):
+        if self._current_phase >= len(self.phase_mapping.keys()) - 1:
+            self._current_phase = 0    
+        else:
+            self._current_phase += 1
 
     def step(self, action):
         
-        angle = math.radians(action[0])
-        magnitude = action[1] * self.agent_max_movement
-        direction = self._get_direction_from_polar(angle, magnitude)
-        
-        # We use `np.clip` to make sure we don't leave the grid
-        self._agent_location = np.clip(
-            self._agent_location + direction, 0, self.size - 1
-        )
+        if(self._current_phase == 0):
+            angle = math.radians(action[0])
+            magnitude = action[1] * self.agent_max_movement
+            direction = self._get_direction_from_polar(angle, magnitude)
+            
+            # We use `np.clip` to make sure we don't leave the grid
+            self._agent_location = np.clip(
+                self._agent_location + direction, 0, self.size - 1
+            )
 
         # An episode is done iff the agent has reached the target
         terminated = np.array_equal(self._agent_location, self._target_location)
@@ -147,12 +167,14 @@ class Warhammer40kEnv(gym.Env):
 
         self._opponent_actions()
 
+        
         observation = self._get_obs()
         info = self._get_info()
 
         if self.render_mode == "human":
             self._render_frame()
 
+        self._proceed_to_next_phase()
         return observation, reward, terminated, False, info
 
     def render(self):
@@ -212,6 +234,9 @@ class Warhammer40kEnv(gym.Env):
                 (pix_square_size * x, self.window_size),
                 width=3,
             )
+
+        img = self.font.render(self.phase_mapping[self._current_phase], True, (100, 100, 100))
+        canvas.blit(img, (10, 10))
 
         if self.render_mode == "human":
             # The following line copies our drawings from `canvas` to the visible window
