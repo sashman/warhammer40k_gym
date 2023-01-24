@@ -9,10 +9,10 @@ class Warhammer40kEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 1}
 
     phase_mapping = {
-        0: "Movement",
-        1: "Shooting",
-        2: "Charging",
-        3: "Fighting",
+        0: "movement",
+        1: "shooting",
+        2: "charging",
+        3: "fighting",
     }
 
     def __init__(self, render_mode=None, size=50):
@@ -24,6 +24,8 @@ class Warhammer40kEnv(gym.Env):
         
         self.agent_max_movement = 6
         self.opponent_max_movement = 6
+
+        self._agent_shooting_target_locaiton = np.array([])
 
         self.target_radius = 3
 
@@ -48,11 +50,11 @@ class Warhammer40kEnv(gym.Env):
             }
         )
 
-        # angle of movement, fraction of max movement
-        self.action_space = spaces.Box(
-                np.array([0, 0]).astype(np.float32),
-                np.array([360, +1]).astype(np.float32),
-            )
+        # Indexed by phase
+        self.action_space = spaces.Dict({
+            0: spaces.Box(low=np.array([0, 0]), high=np.array([360, +1]), dtype=np.float32),
+            1: spaces.Box(low=-1, high=0, dtype=np.int8),
+        })
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -119,6 +121,9 @@ class Warhammer40kEnv(gym.Env):
 
         return observation, info
 
+    def _get_agent_shooting_target_location_from_index(self, index):
+        return self._opponent_location
+
     def _opponent_actions(self):
 
         if(self._current_phase == 0):
@@ -144,14 +149,21 @@ class Warhammer40kEnv(gym.Env):
     def step(self, action):
         
         if(self._current_phase == 0):
-            angle = math.radians(action[0])
-            magnitude = action[1] * self.agent_max_movement
+            angle = math.radians(action[0][0])
+            magnitude = action[0][1] * self.agent_max_movement
             direction = self._get_direction_from_polar(angle, magnitude)
             
             # We use `np.clip` to make sure we don't leave the grid
             self._agent_location = np.clip(
                 self._agent_location + direction, 0, self.size - 1
             )
+
+        if(self._current_phase == 1):
+            shooting_action = action[1]
+
+            if shooting_action >= 0:
+                self._agent_shooting_target_locaiton = self._get_agent_shooting_target_location_from_index(0)
+
 
         # An episode is done iff the agent has reached the target
         terminated = np.array_equal(self._agent_location, self._target_location)
@@ -167,7 +179,6 @@ class Warhammer40kEnv(gym.Env):
 
         self._opponent_actions()
 
-        
         observation = self._get_obs()
         info = self._get_info()
 
@@ -233,6 +244,15 @@ class Warhammer40kEnv(gym.Env):
                 (pix_square_size * x, 0),
                 (pix_square_size * x, self.window_size),
                 width=3,
+            )
+
+        if not self._agent_shooting_target_locaiton.size == 0 and self._current_phase == 1:
+            pygame.draw.line(
+                canvas,
+                (255,127,0),
+                (self._agent_location +.5) * pix_square_size,
+                (self._agent_shooting_target_locaiton +.5) * pix_square_size,
+                width=5,
             )
 
         img = self.font.render(self.phase_mapping[self._current_phase], True, (100, 100, 100))
