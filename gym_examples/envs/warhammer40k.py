@@ -1,4 +1,6 @@
 import math
+from gym_examples.warhammer40k.constants import PHASE_MAPPING
+from gym_examples.warhammer40k.render import close, render_frame
 import gymnasium as gym
 from gymnasium import spaces
 import pygame
@@ -7,13 +9,6 @@ import numpy as np
 
 class Warhammer40kEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 1}
-
-    phase_mapping = {
-        0: "movement",
-        1: "shooting",
-        2: "charging",
-        3: "fighting",
-    }
 
     def __init__(self, render_mode=None, size=50):
         self.size = size  # The size of the square grid
@@ -45,8 +40,9 @@ class Warhammer40kEnv(gym.Env):
                 # 3 Fighting
                 "phase": spaces.Discrete(1),
                 # Turn number, which player to act
-                # "turn": spaces.Discrete(2) 
-
+                # 0 - players turn
+                # 1 - opponents turn
+                "turn": spaces.Discrete(2) 
             }
         )
 
@@ -74,7 +70,8 @@ class Warhammer40kEnv(gym.Env):
             "agent": self._agent_location, 
             "target": self._target_location, 
             "opponent": self._opponent_location,
-            "phase": self._current_phase
+            "phase": self._current_phase,
+            "turn": self._current_turn,
         }
 
     def _get_info(self):
@@ -112,17 +109,38 @@ class Warhammer40kEnv(gym.Env):
             )
 
         self._current_phase = 0
+        self._current_turn = 0
 
         observation = self._get_obs()
         info = self._get_info()
 
         if self.render_mode == "human":
-            self._render_frame()
+            render_frame(self)
 
         return observation, info
+    
+    def _reset_targets(self):
+        self._agent_shooting_target_locaiton = np.array([])
 
     def _get_agent_shooting_target_location_from_index(self, index):
         return self._opponent_location
+    
+    def _player_actions(self, action):
+        if(self._current_phase == 0):
+            angle = math.radians(action[0][0])
+            magnitude = action[0][1] * self.agent_max_movement
+            direction = self._get_direction_from_polar(angle, magnitude)
+                
+                # We use `np.clip` to make sure we don't leave the grid
+            self._agent_location = np.clip(
+                    self._agent_location + direction, 0, self.size - 1
+                )
+
+        if(self._current_phase == 1):
+            shooting_action = action[1]
+
+            if shooting_action >= 0:
+                self._agent_shooting_target_locaiton = self._get_agent_shooting_target_location_from_index(0)
 
     def _opponent_actions(self):
 
@@ -141,138 +159,55 @@ class Warhammer40kEnv(gym.Env):
             )
 
     def _proceed_to_next_phase(self):
-        if self._current_phase >= len(self.phase_mapping.keys()) - 1:
-            self._current_phase = 0    
+        if self._current_phase >= len(PHASE_MAPPING.keys()) - 1:
+            self._current_phase = 0
+            if self._current_turn == 0:
+                self._current_turn = 1
+            else:
+                self._current_turn = 0
+
+            self._reset_targets()
         else:
             self._current_phase += 1
 
     def step(self, action):
         
-        if(self._current_phase == 0):
-            angle = math.radians(action[0][0])
-            magnitude = action[0][1] * self.agent_max_movement
-            direction = self._get_direction_from_polar(angle, magnitude)
-            
-            # We use `np.clip` to make sure we don't leave the grid
-            self._agent_location = np.clip(
-                self._agent_location + direction, 0, self.size - 1
-            )
-
-        if(self._current_phase == 1):
-            shooting_action = action[1]
-
-            if shooting_action >= 0:
-                self._agent_shooting_target_locaiton = self._get_agent_shooting_target_location_from_index(0)
-
+        if self.is_player_turn():
+            self._player_actions(action)
+        elif self.is_opponent_turn():
+            self._opponent_actions()
 
         # An episode is done iff the agent has reached the target
         terminated = np.array_equal(self._agent_location, self._target_location)
-        
-        distance = np.linalg.norm(
-                self._agent_location - self._target_location, ord=1
-            )
 
+        distance = np.linalg.norm(
+            self._agent_location - self._target_location, ord=1
+        )
         if distance < self.target_radius:
             reward = 1
         else:
             reward = 1 / distance
 
-        self._opponent_actions()
-
         observation = self._get_obs()
         info = self._get_info()
 
         if self.render_mode == "human":
-            self._render_frame()
+            render_frame(self)
 
         self._proceed_to_next_phase()
         return observation, reward, terminated, False, info
 
+    
+    def is_player_turn(self):
+        return self._current_turn == 0
+    
+    def is_opponent_turn(self):
+        return self._current_turn == 1
+
     def render(self):
         if self.render_mode == "rgb_array":
-            return self._render_frame()
-
-    def _render_frame(self):
-        if self.window is None and self.render_mode == "human":
-            pygame.init()
-            pygame.display.init()
-            self.window = pygame.display.set_mode((self.window_size, self.window_size))
-        if self.clock is None and self.render_mode == "human":
-            self.clock = pygame.time.Clock()
-
-        canvas = pygame.Surface((self.window_size, self.window_size))
-        canvas.fill((255, 255, 255))
-        pix_square_size = (
-            self.window_size / self.size
-        )  # The size of a single grid square in pixels
-
-        pygame.draw.circle(
-            canvas,
-            (255, 0, 0),
-            (self._target_location + 0.5) * pix_square_size,
-            pix_square_size * self.target_radius,
-        )
-
-        # Now we draw the agent
-        pygame.draw.circle(
-            canvas,
-            (0, 0, 255),
-            (self._agent_location + 0.5) * pix_square_size,
-            pix_square_size / 3,
-        )
-
-        # Now we draw the opponent
-        pygame.draw.circle(
-            canvas,
-            (127, 0, 127),
-            (self._opponent_location + 0.5) * pix_square_size,
-            pix_square_size / 3,
-        )
-
-        # Finally, add some gridlines
-        for x in range(self.size + 1):
-            pygame.draw.line(
-                canvas,
-                0,
-                (0, pix_square_size * x),
-                (self.window_size, pix_square_size * x),
-                width=3,
-            )
-            pygame.draw.line(
-                canvas,
-                0,
-                (pix_square_size * x, 0),
-                (pix_square_size * x, self.window_size),
-                width=3,
-            )
-
-        if not self._agent_shooting_target_locaiton.size == 0 and self._current_phase == 1:
-            pygame.draw.line(
-                canvas,
-                (255,127,0),
-                (self._agent_location +.5) * pix_square_size,
-                (self._agent_shooting_target_locaiton +.5) * pix_square_size,
-                width=5,
-            )
-
-        img = self.font.render(self.phase_mapping[self._current_phase], True, (100, 100, 100))
-        canvas.blit(img, (10, 10))
-
-        if self.render_mode == "human":
-            # The following line copies our drawings from `canvas` to the visible window
-            self.window.blit(canvas, canvas.get_rect())
-            pygame.event.pump()
-            pygame.display.update()
-
-            # We need to ensure that human-rendering occurs at the predefined framerate.
-            # The following line will automatically add a delay to keep the framerate stable.
-            self.clock.tick(self.metadata["render_fps"])
-        else:  # rgb_array
-            return np.transpose(
-                np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
-            )
+            # return self._render_frame()
+            return render_frame(self)
 
     def close(self):
-        if self.window is not None:
-            pygame.display.quit()
-            pygame.quit()
+        close(self)
