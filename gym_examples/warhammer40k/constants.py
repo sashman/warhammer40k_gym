@@ -5,3 +5,11 @@ PHASE_MAPPING = {
     3: "fighting",
 }
 
+from enum import Enum
+
+class GamePhase(Enum):
+    COMMAND = 0
+    MOVEMENT = 1
+    SHOOTING = 2
+    CHARGING = 3
+    FIGHTING =4
