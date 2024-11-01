@@ -23,7 +23,8 @@ def main():
     
     # execution loop
     obs_n = env.reset()
-    for i in range(0, 10):
+    while True:
+    # for i in range(0, 10):
         
         # query for action from each agent's policy
         act_n = []

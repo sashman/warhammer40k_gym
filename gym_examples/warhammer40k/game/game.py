@@ -37,9 +37,6 @@ class Game():
         
         world = World(players = [player_a, player_b], agents = agents)
         
-        # for i, agent in enumerate(world.agents):
-        #     agent.name = 'agent %d' % i
-                        
         # make initial conditions
         self.reset_world(world)
         return world

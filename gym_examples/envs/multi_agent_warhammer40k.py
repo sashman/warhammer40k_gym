@@ -2,6 +2,7 @@ import gym
 from gym import spaces
 from gym.envs.registration import EnvSpec
 from gym_examples.warhammer40k.game.multi_discrete import MultiDiscrete
+from gym_examples.warhammer40k.renderer.py_game_renderer import PyGameRenderer
 import numpy as np
 
 
@@ -18,6 +19,8 @@ class MultiAgentWarhammer40k(gym.Env):
 
         self.world = world
         self.agents = self.world.policy_agents
+        self.renderer = PyGameRenderer()
+        self.renderer.setup(1024, 50)
         
         # set required vectorized gym env property
         self.n = len(world.policy_agents)
@@ -200,6 +203,7 @@ class MultiAgentWarhammer40k(gym.Env):
 
     # render environment
     def render(self, mode='human'):
+        self.renderer.render_frame(self.world)
 
         # for i in range(len(self.viewers)):
         #     # create viewers (if necessary)
