@@ -23,7 +23,7 @@ def main():
     
     # execution loop
     obs_n = env.reset()
-    while True:
+    for i in range(0, 10):
         
         # query for action from each agent's policy
         act_n = []
@@ -39,7 +39,7 @@ def main():
         
         # display rewards
         for agent in env.world.agents:
-            print(agent.name + " reward: %0.3f" % env._get_reward(agent))
+            print(" GAME STATE " + str(env.world) + " " + agent.name + " reward: %0.3f" % env._get_reward(agent) + " AGENT STATE has_moved_this_phase=" + str(agent.has_moved_this_phase))
 
 
 if __name__ == '__main__':
