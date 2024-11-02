@@ -1,7 +1,11 @@
+from pprint import pp
 import gym
 from gym import spaces
 from gym.envs.registration import EnvSpec
+from gym_examples.warhammer40k.game.agent import Agent
+from gym_examples.warhammer40k.game.phase import Phase
 from gym_examples.warhammer40k.game.multi_discrete import MultiDiscrete
+from gym_examples.warhammer40k.game.world import World
 from gym_examples.warhammer40k.renderer.py_game_renderer import PyGameRenderer
 import numpy as np
 
@@ -16,6 +20,8 @@ class MultiAgentWarhammer40k(gym.Env):
     def __init__(self, world, reset_callback=None, reward_callback=None,
                  observation_callback=None, info_callback=None,
                  done_callback=None, shared_viewer=True):
+        
+        print("MultiAgentWarhammer40k __init__")
 
         self.world = world
         self.agents = self.world.policy_agents
@@ -23,7 +29,7 @@ class MultiAgentWarhammer40k(gym.Env):
         self.renderer.setup(1024, 50)
         
         # set required vectorized gym env property
-        self.n = len(world.policy_agents)
+        self.number_of_agents = len(world.policy_agents)
         
         # scenario callbacks
         self.reset_callback = reset_callback
@@ -48,11 +54,8 @@ class MultiAgentWarhammer40k(gym.Env):
         for agent in self.agents:
             total_action_space = []
             
-            # physical action space
-            if self.discrete_action_space:
-                u_action_space = spaces.Discrete(world.dim_p * 2 + 1)
-            else:
-                u_action_space = spaces.Box(low=-agent.u_range, high=+agent.u_range, shape=(world.dim_p,), dtype=np.float32)
+            # Agent movement action space, 0 - 360 degrees, 0 - 1 speed
+            u_action_space = spaces.Box(low=np.array([0, 0]), high=np.array([360, +1]), dtype=np.float16),
                 
             if agent.movable:
                 total_action_space.append(u_action_space)
@@ -61,11 +64,14 @@ class MultiAgentWarhammer40k(gym.Env):
             if len(total_action_space) > 1:
                 # all action spaces are discrete, so simplify to MultiDiscrete action space
                 if all([isinstance(act_space, spaces.Discrete) for act_space in total_action_space]):
+                    print("Warning: Assuming discrete action space, but multiple spaces are provided, using MultiDiscrete")
                     act_space = MultiDiscrete([[0, act_space.n - 1] for act_space in total_action_space])
                 else:
+                    print("Warning: Not all action spaces are discrete, using a list of spaces instead")
                     act_space = spaces.Tuple(total_action_space)
                 self.action_space.append(act_space)
             else:
+                print("Warning: Assuming discrete action space, but only a single space is provided")
                 self.action_space.append(total_action_space[0])
                 
             # observation space
@@ -77,7 +83,7 @@ class MultiAgentWarhammer40k(gym.Env):
         if self.shared_viewer:
             self.viewers = [None]
         else:
-            self.viewers = [None] * self.n
+            self.viewers = [None] * self.number_of_agents
         self._reset_render()
 
     def step(self, action_n):
@@ -89,7 +95,7 @@ class MultiAgentWarhammer40k(gym.Env):
         
         # set action for each agent
         for i, agent in enumerate(self.agents):
-            self._set_action(action_n[i], agent, self.action_space[i])
+            self._set_action(action_n[i], agent, self.action_space[i], world=self.world)
             
         # advance world state
         self.world.step()
@@ -105,7 +111,7 @@ class MultiAgentWarhammer40k(gym.Env):
         # all agents get total reward in cooperative case
         reward = np.sum(reward_n)
         if self.shared_reward:
-            reward_n = [reward] * self.n
+            reward_n = [reward] * self.number_of_agents
 
         return obs_n, reward_n, done_n, info_n
 
@@ -150,7 +156,22 @@ class MultiAgentWarhammer40k(gym.Env):
         return self.reward_callback(agent, self.world)
 
     # set env action for a particular agent
-    def _set_action(self, action, agent, action_space, time=None):
+    def _set_action(self, action, agent: Agent, action_space, world: World, time=None):
+        
+        if world.current_phase == Phase.Init:
+            # Init agents
+            # Set up agents in opposite corners of world
+            for i, agent in enumerate([agent for agent in self.agents if not agent.has_been_init]):
+                agent.set_location(world.agent_init_location(i))
+                agent.has_been_init = True
+                agent.has_moved_this_phase = False
+            
+        pp(action)
+        if world.current_phase == Phase.Movement:
+            for agent in world.agents_for_player(world.current_player_round):
+                agent.move(action[0], action[1], world.heigh, world.width)
+                
+                
         # agent.action.u = np.zeros(self.world.dim_p)
         
         # # process action

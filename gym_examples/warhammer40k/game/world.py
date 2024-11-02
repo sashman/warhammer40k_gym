@@ -1,5 +1,5 @@
 from itertools import groupby
-from pprint import pp
+import numpy as np
 
 from gym_examples.warhammer40k.game.agent import Agent
 from gym_examples.warhammer40k.game.world_timing import get_next_world_time_state
@@ -16,8 +16,8 @@ class World(object):
         # position dimensionality
         self.dim_p = 2
         
-        self.width = 6
-        self.heigh = 4
+        self.width = 50
+        self.heigh = 50
         
         self.current_turn = 0
         self.current_player_round = 0
@@ -60,10 +60,6 @@ class World(object):
         # set actions for scripted agents 
         for agent in self.scripted_agents:
             agent.action = agent.action_callback(agent, self)
-            
-        if self.current_phase == Phase.Movement:
-            for agent in self.agents_for_player(self.current_player_round):
-                agent.move()
         
         (new_turn, new_player_round, new_phase) = get_next_world_time_state(
             current_phase=self.current_phase,
@@ -72,10 +68,14 @@ class World(object):
             players=self.players,
             agents_by_player=self.agents_by_player
         )
+        
         self.current_turn = new_turn
         self.current_player_round = new_player_round
         self.current_phase = new_phase
         print("\tNext STATE " + str(self))
+        
+    def agent_init_location(self, agent_index):
+        return np.array([agent_index % 2 * (self.width - 1), agent_index // 2 * (self.heigh - 1) + self.heigh/2])
             
     def flatten(self, xss):
         return [x for xs in xss for x in xs]

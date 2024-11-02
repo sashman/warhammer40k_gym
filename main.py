@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from pprint import pp
 import os,sys
 
 from gym_examples.envs.multi_agent_warhammer40k import MultiAgentWarhammer40k
@@ -19,19 +20,21 @@ def main():
     env.render()
     
     # create interactive policies for each agent
-    policies = [InteractivePolicy(env,i) for i in range(env.n)]
+    policies = [InteractivePolicy(env,i) for i in range(env.number_of_agents)]
     
     # execution loop
     obs_n = env.reset()
     while True:
     # for i in range(0, 10):
         
-        # query for action from each agent's policy
-        act_n = []
-        for i, policy in enumerate(policies):
-            act_n.append(policy.action(obs_n[i]))
-        
 
+        act_n = []        
+        for i, agent in enumerate(env.world.agents):
+            # sample a random action from action space
+            act_n.append(env.action_space[i][0].sample())
+            
+        
+        pp(act_n)
         # step environment
         obs_n, reward_n, done_n, _ = env.step(act_n)
         

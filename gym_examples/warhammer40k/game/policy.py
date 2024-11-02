@@ -20,7 +20,7 @@ class InteractivePolicy(Policy):
         # env.viewers[agent_index].window.on_key_release = self.key_release
 
     def action(self, obs):
-        return np.empty(1)
+        return np.empty(2)
 
     # keyboard event callbacks
     def key_press(self, k, mod):

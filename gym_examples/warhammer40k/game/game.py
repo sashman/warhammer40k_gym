@@ -6,6 +6,8 @@ from gym_examples.warhammer40k.game.unit import Unit
 from gym_examples.warhammer40k.game.world import World
 import numpy as np
 
+RED = (255, 0, 0)
+BLUE = (0, 0, 255)
 
 class Game():
     
@@ -15,8 +17,8 @@ class Game():
         player_a = Player("player_a")
         player_b = Player("player_b")
         
-        unit_a = Unit("unit_a", player=player_a)
-        unit_b = Unit("unit_b", player=player_b)
+        unit_a = Unit("unit_a", player=player_a, unit_colour=BLUE)
+        unit_b = Unit("unit_b", player=player_b, unit_colour=RED)
         
         model_a = Model("model_a", unit=unit_a)
         model_b = Model("model_b", unit=unit_b)
@@ -42,10 +44,11 @@ class Game():
         return world
 
     def reset_world(self, world):
+        print("reset world")
                     
-        # set random initial states
+        # set agent's locations off map
         for agent in world.agents:
-            agent.state.p_pos = np.random.uniform(-1,+1, world.dim_p)        
+            agent.set_location(np.array([-1,-1]))
             
 
     def reward(self, agent, world):
