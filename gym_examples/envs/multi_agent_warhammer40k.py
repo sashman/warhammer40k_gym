@@ -166,10 +166,13 @@ class MultiAgentWarhammer40k(gym.Env):
                 agent.has_been_init = True
                 agent.has_moved_this_phase = False
             
-        pp(action)
         if world.current_phase == Phase.Movement:
             for agent in world.agents_for_player(world.current_player_round):
                 agent.move(action[0], action[1], world.heigh, world.width)
+                
+        if world.current_phase == Phase.Shooting:
+            for agent in world.agents_for_player(world.current_player_round):
+                agent.shoot()
                 
                 
         # agent.action.u = np.zeros(self.world.dim_p)

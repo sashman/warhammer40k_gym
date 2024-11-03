@@ -72,7 +72,7 @@ class World(object):
         self.current_turn = new_turn
         self.current_player_round = new_player_round
         self.current_phase = new_phase
-        print("\tNext STATE " + str(self))
+        # print("\tNext STATE " + str(self))
         
     def agent_init_location(self, agent_index):
         return np.array([agent_index % 2 * (self.width - 1), agent_index // 2 * (self.heigh - 1) + self.heigh/2])

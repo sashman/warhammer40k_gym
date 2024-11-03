@@ -29,6 +29,8 @@ class Agent():
         
         self.has_moved_this_phase = False
         
+        self.has_shot_this_phase = False
+        
         self.has_been_init = False
         
     def get_location(self):
@@ -49,6 +51,9 @@ class Agent():
             )
     
         self.has_moved_this_phase = True
+        
+    def shoot(self):
+        self.has_shot_this_phase = True
         
     def __str__(self):
         return f"Agent {self.name} Player {self.player.id}"

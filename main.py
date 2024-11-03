@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from pprint import pp
+import numpy as np
 import os,sys
 
 from gym_examples.envs.multi_agent_warhammer40k import MultiAgentWarhammer40k
@@ -31,10 +32,10 @@ def main():
         act_n = []        
         for i, agent in enumerate(env.world.agents):
             # sample a random action from action space
-            act_n.append(env.action_space[i][0].sample())
+            # action = env.action_space[i][0].sample()
+            action = np.array([270, 1])
+            act_n.append(action)
             
-        
-        pp(act_n)
         # step environment
         obs_n, reward_n, done_n, _ = env.step(act_n)
         
