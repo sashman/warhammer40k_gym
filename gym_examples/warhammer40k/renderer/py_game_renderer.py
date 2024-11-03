@@ -1,6 +1,8 @@
 from gym_examples.warhammer40k.game.world import World
 import pygame
 
+GREEN = (0, 255, 0)
+
 class PyGameRenderer:
     
     def __init__(self):
@@ -38,6 +40,9 @@ class PyGameRenderer:
     def render_frame(self, world: World):
         self.canvas.fill((255, 255, 255))
         self.render_grid()
+        
+        for objective in world.primary_objectives:
+            self.render_primary_objective(objective.get_location(), objective.radius)
         
         for agent in world.agents:
             self.render_model(agent.unit.unit_colour, agent.get_location())
@@ -80,4 +85,11 @@ class PyGameRenderer:
                 (location + 0.5) * self.pix_square_size,
                 self.pix_square_size / 2,
             )
-
+        
+    def render_primary_objective(self, location, radius):
+        # Draw dashed circle of radius, no fill, think line
+        pygame.draw.circle(self.canvas,
+                           GREEN,
+                           (location + 0.5) * self.pix_square_size,
+                           self.pix_square_size * radius,
+                           width=2)

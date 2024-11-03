@@ -2,6 +2,7 @@
 from gym_examples.warhammer40k.game.agent import Agent
 from gym_examples.warhammer40k.game.model import Model
 from gym_examples.warhammer40k.game.player import Player
+from gym_examples.warhammer40k.game.primary_objective import PrimaryObjective
 from gym_examples.warhammer40k.game.unit import Unit
 from gym_examples.warhammer40k.game.world import World
 import numpy as np
@@ -36,8 +37,10 @@ class Game():
         player_a.units = [unit_a]
         player_b.units = [unit_b]
         
+        primary_objective_a = PrimaryObjective("primary_objective_a", 25, 10)
+        primary_objective_b = PrimaryObjective("primary_objective_a", 25, 40)
         
-        world = World(players = [player_a, player_b], agents = agents)
+        world = World(players = [player_a, player_b], agents = agents, primary_objectives = [primary_objective_a, primary_objective_b])
         
         # make initial conditions
         self.reset_world(world)

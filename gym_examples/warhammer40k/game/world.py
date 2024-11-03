@@ -1,4 +1,5 @@
 from itertools import groupby
+from gym_examples.warhammer40k.game.primary_objective import PrimaryObjective
 import numpy as np
 
 from gym_examples.warhammer40k.game.agent import Agent
@@ -6,9 +7,9 @@ from gym_examples.warhammer40k.game.world_timing import get_next_world_time_stat
 from gym_examples.warhammer40k.game.phase import Phase
 
 class World(object):
-    def __init__(self, players, agents: list[Agent]):
-        # list of agents and entities (can change at execution-time!)
-        self.agents = []
+    def __init__(self, players, agents: list[Agent], primary_objectives: list[PrimaryObjective]):
+        
+        
         self.landmarks = []
         
         # communication channel dimensionality
@@ -27,6 +28,7 @@ class World(object):
         self.units = self.flatten([player.units for player in self.players])
         self.models = self.flatten([unit.models for unit in self.units])
         self.agents = agents
+        self.primary_objectives = primary_objectives
         self.agents_by_player = {}
         
         self.agents_by_player = []
