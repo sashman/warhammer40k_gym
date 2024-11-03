@@ -69,9 +69,17 @@ class World(object):
             agents_by_player=self.agents_by_player
         )
         
-        self.current_turn = new_turn
+        if self.current_turn != new_turn:
+            self.reset_agents()
+            
+        self.current_turn = new_turn        
         self.current_player_round = new_player_round
         self.current_phase = new_phase
+
+    def reset_agents(self):
+        for agent in self.agents:
+            agent.has_moved_this_phase = False
+            agent.has_shot_this_phase = False
         # print("\tNext STATE " + str(self))
         
     def agent_init_location(self, agent_index):
