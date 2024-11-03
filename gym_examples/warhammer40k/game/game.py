@@ -58,9 +58,34 @@ class Game():
         return 0
 
     def observation(self, agent, world):
+        # build observation state of world
+        
         # get positions of all entities in this agent's reference frame
         entity_pos = []
-        for entity in world.landmarks:
-            entity_pos.append(entity.state.p_pos - agent.state.p_pos)
-        return entity_pos
+        for entity in world.entities:
+            entity_pos.append(entity.state.p_pos)
+            
+        # get positions of all primary objectives in this agent's reference frame
+        primary_objectives_pos = []
+        for primary_objective in world.primary_objectives:
+            primary_objectives_pos.append(primary_objective.state.p_pos)
+            
+        # get distance to all entities in this agent's reference frame
+        entity_dist = []
+        for entity in world.entities:
+            entity_dist.append(np.linalg.norm(agent.state.p_pos - entity.state.p_pos))
+            
+        # get distance to all primary objectives in this agent's reference frame
+        primary_objectives_dist = []
+        for primary_objective in world.primary_objectives:
+            primary_objectives_dist.append(np.linalg.norm(agent.state.p_pos - primary_objective.state.p_pos))
+        
+        obs_dict = {
+            'entity_pos': entity_pos,
+            'entity_dist': entity_dist,
+            'primary_objectives_pos': primary_objectives_pos,
+            'primary_objectives_dist': primary_objectives_dist
+        }
+        
+        return obs_dict
     

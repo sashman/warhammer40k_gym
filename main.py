@@ -38,6 +38,7 @@ def main():
             
         # step environment
         obs_n, reward_n, done_n, _ = env.step(act_n)
+        pp(obs_n)
         
         # render all agent views
         env.render()
