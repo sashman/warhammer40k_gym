@@ -25,8 +25,6 @@ class MultiAgentWarhammer40k(gym.Env):
 
         self.world = world
         self.agents = self.world.policy_agents
-        self.renderer = PyGameRenderer()
-        self.renderer.setup(1024, 50)
         
         # set required vectorized gym env property
         self.number_of_agents = len(world.policy_agents)
@@ -55,10 +53,10 @@ class MultiAgentWarhammer40k(gym.Env):
             total_action_space = []
             
             # Agent movement action space, 0 - 360 degrees, 0 - 1 speed
-            u_action_space = spaces.Box(low=np.array([0, 0]), high=np.array([360, +1]), dtype=np.float16),
+            movement_action_space = spaces.Box(low=np.array([0, 0]), high=np.array([360, +1]), dtype=np.float16),
                 
             if agent.movable:
-                total_action_space.append(u_action_space)
+                total_action_space.append(movement_action_space)
                                 
             # total action space
             if len(total_action_space) > 1:
@@ -129,6 +127,9 @@ class MultiAgentWarhammer40k(gym.Env):
         for agent in self.agents:
             obs_n.append(self._get_obs(agent))
         return obs_n
+    
+    def game_over(self):
+        return self.world.game_over()
 
     # get info used for benchmarking
     def _get_info(self, agent):
@@ -225,8 +226,18 @@ class MultiAgentWarhammer40k(gym.Env):
         self.render_geoms = None
         self.render_geoms_xform = None
 
+    def init_renderer(self):
+        self.renderer = PyGameRenderer()
+        self.renderer.setup(1024, 50)
+        
+    def disable_renderer(self):
+        self.renderer = None
+
     # render environment
     def render(self, mode='human'):
+        if self.renderer is None:
+            return []
+        
         self.renderer.render_frame(self.world)
 
         # for i in range(len(self.viewers)):

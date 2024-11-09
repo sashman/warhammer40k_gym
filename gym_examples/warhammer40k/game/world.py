@@ -84,6 +84,10 @@ class World(object):
             agent.has_shot_this_phase = False
         # print("\tNext STATE " + str(self))
         
+    def game_over(self):
+        # game is over after turn 5
+        return self.current_turn >= 5
+        
     def agent_init_location(self, agent_index):
         return np.array([agent_index % 2 * (self.width - 1), agent_index // 2 * (self.heigh - 1) + self.heigh/2])
             
