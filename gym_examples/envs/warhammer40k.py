@@ -48,7 +48,9 @@ class Warhammer40kEnv(gym.Env):
 
         # Indexed by phase
         self.action_space = spaces.Dict({
+            # Moving
             0: spaces.Box(low=np.array([0, 0]), high=np.array([360, +1]), dtype=np.float32),
+            # Shooting
             1: spaces.Box(low=-1, high=0, dtype=np.int8),
         })
 

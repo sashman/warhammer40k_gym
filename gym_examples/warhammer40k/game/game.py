@@ -55,7 +55,21 @@ class Game():
             
 
     def reward(self, agent, world):
-        return 0
+        # using numpy calculate
+        # a x (INVERSE_DISTANCE_TO_CLOSEST_OBJECTIVE) + b x (PRESENCE_ON_OBJECTIVE)
+        # where a and b are weights
+        # and INVERSE_DISTANCE_TO_CLOSEST_OBJECTIVE = 1 / distance_to_closest_objective
+        # and PRESENCE_ON_OBJECTIVE = 1 if agent is on objective, 0 otherwise
+        inverse_distance_to_closest_objective = 1 / np.min([np.linalg.norm(agent.state.p_pos - primary_objective.state.p_pos) for primary_objective in world.primary_objectives])
+        inverse_distance_to_closest_objective_factor = 0.1
+        presence_on_objective = 1 if np.min([np.linalg.norm(agent.state.p_pos - primary_objective.state.p_pos - primary_objective.radius) for primary_objective in world.primary_objectives]) <= 0 else 0
+        presence_on_objective_factor = 1
+        
+        return inverse_distance_to_closest_objective_factor * inverse_distance_to_closest_objective \
+            + presence_on_objective_factor * presence_on_objective
+        
+    def done(self, agent, world):
+        return world.game_over()
 
     def observation(self, agent, world):
         # build observation state of world
